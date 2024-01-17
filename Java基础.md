@@ -395,3 +395,209 @@ JVM会使用常量池来管理字符串直接量。
 - 一个类最多只能有一个父类，包括抽象类；但一个类可以实现多个接口。
 
 ## 1.14 异常
+
+### Java异常机制
+
+1. 异常处理
+    - Java异常处理由try, catch, 和finally组成。
+    - try用于包裹业务代码，catch用于捕获并处理异常，finally用于回收资源。
+    - 当系统代码异常，系统会创建异常对象，JVM寻找可以处理这个异常的catch块。
+    - 无论是否发生异常，finally一定会执行。
+2. 抛出异常
+    - Java允许程序主动抛出异常，使用throw。
+3. 异常跟踪栈
+    - 异常从发生异常的方法向外传播。
+
+### Java异常接口
+
+Throwable（异常顶层父类）
+
+- Error
+    - 一般指与虚拟机相关的问题，如系统崩溃，虚拟机错误，动态连接失败等。
+    - 无法恢复或不可能捕捉，将导致程序中断，因此不该用catch来捕获Error。
+- Exception
+    - Checked异常
+        - 需要使用`throws`声明，否则编译器会报错。
+        - 示例：`IOException`, `SQLException`等
+    - Runtime异常
+        - RuntimeException类及其子类都为Runtime异常
+        - 运行时可能被抛出的异常。
+        - 示例：`NullPointerException`, `IndexOutOfBoundsException`等
+
+### finally
+
+- 无论try，catch是否异常捕获，或者是否return。Finally都会执行。除了在try，catch中使用`System.exit(1);`
+- 在finally中使用return，throw语句会导致try，catch中的return，throw语句失效。
+    - 系统会寻找是否有finally，如果有系统会立即开始执行finally，只有当执行完成后，才会执行try，catch中的return或throw语句。
+
+## 1.15 static修饰的类
+
+1. 非内部类
+    - 不能被声明为static
+2. 静态内部类（Static Nested Class）
+    - 可以被继承。因为他们是静态的，所以不需要外部类的实例就可以被创建和使用，他们可以被看作是其外部类的一个静态成员。
+    - 不能访问外部类的实例成员，只能访问静态成员
+    
+    ```java
+    public class OuterClass{
+    	//静态内部类
+    	public static class StaticNestedClass{
+    		public void display() {
+    			System.out.println("11");
+    		}
+    	}
+    }
+    
+    //继承静态内部类
+    public class ExtendedClass extends OuterClass.StaticNestedClass {
+    	@Override
+    	public void display() {
+    		System.out.println("22");
+    	}
+    }
+    ```
+    
+
+### static和final的区别
+
+static
+
+- 声明static的都属于类本身，而非某个实例
+- 静态变量：可以被所有类的实例共享，在类第一次被加载的时候创建，程序运行期间只有一份拷贝。
+- 静态方法：可以在没有类实例下被调用，只能访问静态成员。
+
+```java
+public class MyClass {
+	public static int a;//可以使用
+	public int b;//不能使用
+
+	public static int staticMethod() {
+		return a;
+	}
+}
+```
+
+final
+
+- 不能被更改或继承
+- final变量：无法修改
+- final方法：无法被重写
+- final类：无法被继承
+
+## 1.16 泛型
+
+Java集合在编译时会把对象的编译类型变成Object类型。当取出集合元素的时候需要进行类型转换
+
+`List<String>` 这是一个泛型列表，可以帮助集合自动记住元素的数据类型，无需进行强制类型转换
+
+### 泛型擦除
+
+```java
+List<String> list1 = ...;
+List list2 = list1;
+
+for(Object item : list2) {
+	String str = (String) item; //强制类型转换
+}
+
+List list1 = ...;
+List<String> list2 = list1; //编译时警告“未经检查的转换“
+```
+
+在编译时，list2中将为Object类型。当需要取出时，需要进行强制类型转换。
+
+### List<? extends T>和List<? super T>
+
+List<? extends T>
+
+- 这种list可以接受T或者T的任何子类。上界通配符。
+- 读取是安全的，因为无论是T的哪个子类，都可以把它当成T。
+- 写入是不安全的，无法确定List到底接受哪种具体子类
+- 用于安全读取数据，例如在设计只读方法。
+
+```java
+List<? extends Number> numList = new ArrayList<Integer>();
+Number num = numList.get(0);
+//不可以写入具体数据类型，因为无法确定，只能用Number
+```
+
+List<? super T>
+
+- 这种List可以接受T和T任何父类，下界通配符。
+- 读取是不安全的，因为可能是T的任何父类，无法确定返回对象。
+- 写入是安全的，无论List具体类型，它至少接受T。
+- 用于安全写入数据，例如设计输入参数时。
+
+```java
+List<? super Integer> intList = new ArrayList<Number>();
+Object obj = intList.get(0);
+//可以写入Integer，因为无论List具体是什么，至少接受Integer
+intList.add(new Integer(10));
+```
+
+## 1.17 Java反射机制
+
+反射允许绕过访问控制，访问或修改私有字段的值。
+
+反射允许程序在运行中检查或修改类和对象的行为。
+
+主要通过`java.lang.reflect`包中的类和接口来实现。
+
+```java
+Class<?> clazz = Class.forName("java.util.ArrayList");
+Method[] methods = clazz.getDeclaredMethods(); //获取类的methods
+Field[] fields = clazz.getDeclaredFields(); //获取类的fields
+Constructor<?>[] constructors = clazz.getDeclaredConstructors(); //获取类的构造器
+
+//实例化对象
+Object instance = clazz.newInstance();
+
+//访问字段和方法
+clazz = Myclass.class;
+Method method = clazz.getDeclaredMethod("myMethod", String.class);
+method.setAccessible(true); //如果myMethod是私有方法
+method.invoke(instanceOfMyClass, "parameter");
+```
+
+反射机制是实现动态代理的基础。
+
+动态代理允许在运行时创建一个实现了一组给定接口的新对象。
+
+优点
+
+- 灵活性：可以在不知道具体类的情况下与对象交互
+- 通用性：可以编写不依赖于特定类的通用代码
+
+缺点
+
+- 性能：反射比直接的Java代码慢，因为涉及动态类型解析
+- 安全：反射破坏了封装性，因为允许访问私有字段和方法
+- 复杂
+
+反射的应用场景
+
+- JDBC：创建数据库连接，需要先通过反射机制加载数据库的驱动程序
+- XML：解析出来的类是String，需要利用反射机制实例化
+- AOP（面向切面编程）：是在程序运行时创建目标对象的代理类，必须使用反射实现
+
+## 1.18 Java的四种引用方式
+
+1. 强引用（Strong Reference）
+    - 如果一个对象具有强引用，垃圾收集器不会回收
+    - 当使用`new`创建一个对象时，就是创建强引用
+    - 只要强引用存在，垃圾收集器不会回收该对象
+2. 软引用（Soft Reference）
+    - 用来描述一些还有用但非必需的对象
+    - 通过`java.lang.ref.SoftReference`类实现
+    - 在内存足够的情况下，垃圾收集器不会回收软引用指向的对象；如果内存不足，就会回收这些对象的内存。
+    - 适合实现缓存
+3. 弱引用（Weak Reference）
+    - 比软引用更弱的引用
+    - 通过`java.lang.ref.WeakReference`实现
+    - 只要垃圾收集器发现弱引用，不管当前内存是否足够，都会回收对象的内存。
+    - 适合用于实现无需显示删除的缓存，例如WeakHashMap
+4. 虚引用（Phantom Reference）
+    - 最弱的引用类型
+    - 通过`java.lang.ref.PhantomReference`类实现，必须与`ReferenceQueue`一起使用
+    - 主要用来跟踪对象被垃圾收集器回收的活动。
+    - 虚引用对对象本身没有太大影响，完全类似于没有引用。
